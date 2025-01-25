@@ -1,0 +1,17 @@
+<mujoco model="target_zone">
+    <compiler angle="radian"/>
+
+    <asset>
+        <material name="target_zone" rgba="0.2 0.2 1 1"/>
+    </asset>
+
+    <worldbody>
+        <body name="target_zone" pos="0.5 0 0.18">
+            <!-- Agregar un freejoint para hacer que la zona objetivo sea un objeto libre -->
+            <joint name="target_zone_joint" type="free"/>
+            
+            <!-- Zone de destino (azul) -->
+            <geom name="target_zone" type="cylinder" size="0.1 0.01" material="target_zone"/>
+        </body>
+    </worldbody>
+</mujoco>

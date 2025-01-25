@@ -1,0 +1,22 @@
+<mujoco model="colored_cubes">
+    <compiler angle="radian"/>
+
+    <asset>
+        <material name="cube_red" rgba="1 0.2 0.2 1"/>
+        <material name="cube_green" rgba="0.2 0.8 0.2 1"/>
+    </asset>
+
+    <worldbody>
+        <!-- Cubo rojo -->
+        <!-- <body name="red_cube" pos="0.5 0 0.44">
+            <joint type="free"/>
+            <geom name="red_cube" type="box" size="0.02 0.02 0.02" material="cube_red" mass="0.1"/>
+        </body> -->
+
+        <!-- Cubo verde -->
+        <body name="green_cube" pos="0.4 0.3 0.18">
+            <joint type="free"/>
+            <geom name="green_cube" type="box" size="0.02 0.02 0.02" material="cube_green" mass="0.1"/>
+        </body>
+    </worldbody>
+</mujoco>

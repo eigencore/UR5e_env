@@ -1,0 +1,29 @@
+<mujoco model="table">
+    <compiler angle="radian"/>
+
+    <asset>
+        <material name="table_wood" rgba="0.7 0.5 0.3 1"/>
+        <material name="red_zone" rgba="1 0.2 0.2 1"/>
+        <material name="green_zone" rgba="0.2 0.8 0.2 1"/>
+        <!-- <material name="target_zone" rgba="0.2 0.2 1 1"/> -->
+    </asset>
+
+    <worldbody>
+        <body name="table" pos="0.5 0 0">
+            <!-- Base de la mesa (marrón) -->
+            <geom name="table_base" type="box" size="0.3 0.4 0.02" pos="0 0 0.15" material="table_wood"/>
+            
+            <!-- Zone de destino (azul) -->
+            <!-- <geom name="target_zone" type="cylinder" size="0.1 0.001" pos="0 0 0.421" material="target_zone"/> -->
+            <!-- Zonas de color (ligeramente elevadas sobre la superficie) -->
+            <!-- <geom name="red_zone" type="box" size="0.29 0.19 0.001" pos="0 -0.2 0.421" material="red_zone"/>
+            <geom name="green_zone" type="box" size="0.29 0.19 0.001" pos="0 0.2 0.421" material="green_zone"/> -->
+            
+            <!-- Patas de la mesa -->
+            <geom name="leg1" type="cylinder" size="0.02 0.1" pos="0.25 0.35 0.05" rgba="0.7 0.5 0.3 1"/>
+            <geom name="leg2" type="cylinder" size="0.02 0.1" pos="0.25 -0.35 0.05" rgba="0.7 0.5 0.3 1"/>
+            <geom name="leg3" type="cylinder" size="0.02 0.1" pos="-0.25 0.35 0.05" rgba="0.7 0.5 0.3 1"/>
+            <geom name="leg4" type="cylinder" size="0.02 0.1" pos="-0.25 -0.35 0.05" rgba="0.7 0.5 0.3 1"/>
+        </body>
+    </worldbody>
+</mujoco>
