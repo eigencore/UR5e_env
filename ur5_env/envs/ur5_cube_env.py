@@ -16,7 +16,7 @@ class URe5Env(gym.Env):
         self.data = mujoco.MjData(self.model)
         self.viewer = None
 
-        # We have 7 actions: 6 for the ctrol of the robot and 1 for the gripper 
+        # We have 7 actions: 6 for the ctrl of the robot and 1 for the gripper 
         self.action_space = spaces.Box(
             low=np.array([-2*np.float32(np.pi), -2*np.float32(np.pi), -np.float32(np.pi), -2*np.float32(np.pi), -2*np.float32(np.pi), -2*np.float32(np.pi), 0], dtype=np.float32),
             high=np.array([2*np.float32(np.pi), 2*np.float32(np.pi), np.float32(np.pi), 2*np.float32(np.pi), 2*np.float32(np.pi), 2*np.float32(np.pi), 255], dtype=np.float32),
@@ -61,7 +61,7 @@ class URe5Env(gym.Env):
             self.data.qvel[:] = self.model.key_qvel[keyframe_id]
             self.data.ctrl[:] = self.model.key_ctrl[keyframe_id]
         else:
-            raise ValueError(f"Keyframe '{keyframe_name}' no encontrado en el modelo.")
+            raise ValueError(f"Keyframe '{keyframe_name}' not found")
         
         mujoco.mj_forward(self.model, self.data)
 
