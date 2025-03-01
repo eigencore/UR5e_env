@@ -4,8 +4,9 @@ from gymnasium import spaces
 import mujoco.viewer
 import numpy as np
 import mujoco
-from control import PIDController  # Asegúrate de tener esta librería instalada
-
+import matplotlib.pyplot as plt
+# from control import PIDController
+from control import uSTAController
 class UR5eEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
@@ -22,7 +23,7 @@ class UR5eEnv(gym.Env):
         keyframe_name = "home"
         keyframe_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_KEY, keyframe_name)
         
-        if keyframe_id != -1:
+        if (keyframe_id != -1):
             self.qpos_home = self.model.key_qpos[keyframe_id]
             self.qvel_home = self.model.key_qvel[keyframe_id]
             self.ctrl_home = self.model.key_ctrl[keyframe_id]
@@ -44,10 +45,16 @@ class UR5eEnv(gym.Env):
         self.render_mode = render_mode
 
         # Inicializar controladores PID para cada articulación
-        self.pids = [PIDController(Kp=50, Ki=5, Kd=30, dt=0.0002) for _ in range(6)]
-
+        # self.pids = [PIDController(Kp=50, Ki=5, Kd=30, dt=0.0002) for _ in range(6)]
+        # Inicializar controlador uSTA para el robot
+        self.usta = uSTAController(k1=10, k2=0.01, k3=1, k4=0.001, dt=0.0002)
+        
         self.window = None
         self.clock = None
+
+        self.q_log = []
+        self.qd_log = []
+        self.error_log = []
 
     def _get_obs(self):
         # Original robot state
@@ -198,20 +205,21 @@ class UR5eEnv(gym.Env):
 
     def reward(self):
         # Calcular error para todas las articulaciones
-        q_error = np.linalg.norm(self.data.qpos[1] - self.qpos_home[6])
+        q_error = np.linalg.norm(self.data.ctrl - self.ctrl_home)
         
-        q_error_penalty = -1.0 * q_error
+        q_error_penalty = 1.0 * q_error
         
         # Componentes de recompensa
         position_reward = 1 / (1 + q_error)  # Recompensa por estar cerca de home
         velocity_penalty = 0.01 * np.linalg.norm(self.data.qvel[:6])  # Penalizar movimientos rápidos
         
         reward = (
-            5.0 * position_reward +
-            q_error_penalty 
-            - 1.0 * velocity_penalty
-            - 100000.0 * self.is_cube_fallen()
-            - 100000.0 * self.is_robot_colliding_with_table()
+            0.2*position_reward 
+            - 0.1*q_error_penalty 
+            - 0.1*velocity_penalty
+            - 0.2*self.is_robot_fallen()
+            - 0.2*self.is_cube_fallen()
+            - 0.2*self.is_robot_colliding_with_table()
         )
         
         # Condiciones de terminación
@@ -249,8 +257,9 @@ class UR5eEnv(gym.Env):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
         
-        for pid in self.pids:
-            pid.reset()
+        # for pid in self.pids:
+        #     pid.reset()
+        self.usta.reset()
         
         self.data.qpos[:] = self.qpos_home
         self.data.qvel[:] = self.qvel_home
@@ -267,18 +276,83 @@ class UR5eEnv(gym.Env):
 
         return observation, info
 
+    def generate_trajectory(self, steps, duration):
+        """
+        Genera una trayectoria constante en la posición "home" con la articulación 3 moviéndose en un seno de 5 grados.
+        """
+        t = np.linspace(0, duration, steps)
+        trajectory = np.tile(self.qpos_home[:6], (steps, 1))
+        
+        # Convertir 5 grados a radianes
+        amplitude = np.deg2rad(15)
+        
+        # Aumentar la frecuencia del seno
+        frequency1 = 0.2  # Frecuencia en Hz
+        frequency2 = 0.3
+        
+        # Aplicar el seno a la articulación 3
+        trajectory[:, 2] += amplitude * np.sin(2 * np.pi * frequency1 * t)
+        trajectory[:, 0] += amplitude * np.sin(2 * np.pi * frequency2 * t)
+        
+        return trajectory
+
+    def execute_trajectory(self, trajectory):
+        """
+        Ejecuta una trayectoria en la simulación.
+        """
+        for q_desired in trajectory:
+            action = np.concatenate([q_desired, [self.data.ctrl[6]]])  # Mantener la acción del gripper
+            obs, reward, terminated, truncated, info = self.step(action)
+            if terminated or truncated:
+                break
+            if self.render_mode == "human":
+                self.render()
+            self.qd_log.append(q_desired)
+            self.q_log.append(self.data.qpos[:6].copy())
+            self.error_log.append(q_desired - self.data.qpos[:6])
+
+    def plot_logs(self):
+        """
+        Grafica las posiciones articulares actuales, deseadas y los errores.
+        """
+        q_log = np.array(self.q_log)
+        qd_log = np.array(self.qd_log)
+        error_log = np.array(self.error_log)
+        time = np.linspace(0, len(q_log) * self.model.opt.timestep, len(q_log))
+
+        fig, axs = plt.subplots(3, 1, figsize=(12, 18))
+
+        for i in range(6):
+            axs[0].plot(time, q_log[:, i], label=f'q{i+1}')
+            axs[1].plot(time, qd_log[:, i], label=f'qd{i+1}')
+            axs[2].plot(time, error_log[:, i], label=f'error{i+1}')
+
+        axs[0].set_title('Posiciones articulares actuales (q)')
+        axs[1].set_title('Posiciones articulares deseadas (qd)')
+        axs[2].set_title('Errores articulares (qd - q)')
+
+        for ax in axs:
+            ax.set_xlabel('Tiempo (s)')
+            ax.set_ylabel('Posición (rad)')
+            ax.legend()
+            ax.grid()
+
+        plt.tight_layout()
+        plt.show()
+
     def step(self, action):
         self.step_count += 1
         
         # 1. RL genera las posiciones articulares deseadas y la acción del gripper
         q_desired = action[:6]  # Primeros 6 valores: posiciones articulares
         gripper_action = action[6]  # Último valor: acción del gripper (0-255)
-        # 2. PID sigue la trayectoria
+        # 2. Controlador sigue la trayectoria
         current_q = self.data.qpos[:6]
         error = q_desired - current_q
         tau = np.zeros(6)
-        for i in range(6):
-            tau[i] = np.clip(self.pids[i].update(error[i]), -20, 20) 
+        # for i in range(6):
+            # tau[i] = np.clip(self.pids[i].update(error[i]), -20, 20)
+        tau = self.usta.update(error) 
 
         # 3. Aplicar torque al robot
         self.data.ctrl[:6] = tau
@@ -308,7 +382,7 @@ class UR5eEnv(gym.Env):
         viewport = mujoco.MjrRect(0, 0, self.window_size, self.window_size)
         
         # Crear una escena
-        scn = mujoco.MjvScene(self.model, maxgeom=10000)
+        scn = mujoco.MjvScene(self.model, maxgeom=20000)
         opt = mujoco.MjvOption()
         
         # Renderizar la escena

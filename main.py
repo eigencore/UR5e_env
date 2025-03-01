@@ -43,7 +43,7 @@ for seed in seeds:
     )
 
     print(f"Training with seed {seed}...")
-    model.learn(total_timesteps=int(200_000), progress_bar=True)  # Entrena por 100,000 pasos
+    model.learn(total_timesteps=int(10_000_000), progress_bar=True)  # Entrena por 100,000 pasos
 
     # Guarda el modelo entrenado
     model_path = os.path.join(log_dir, f"ppo_ur5e_seed_{seed}.zip")
